@@ -3,8 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#13162e">
 <meta name="description" content="魔王にうばわれた1026の漢字を取りもどす、小学校漢字の学習ゲーム">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>勇者エイヤの漢字冒険</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Klee+One:wght@600&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
@@ -19,12 +23,24 @@
   --kanji:"Klee One","Hiragino Mincho ProN","Yu Mincho",serif;
   color-scheme:dark;
 }
-html,body{height:100%;overflow:hidden}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+body{touch-action:manipulation}
 body{background:var(--deep);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.6}
-.app{position:relative;max-width:460px;margin:0 auto;height:100%;overflow-y:auto;overscroll-behavior:contain;background:radial-gradient(120% 60% at 50% 0%,#2b3170 0%,var(--night) 55%,var(--deep) 100%);
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 40px;display:flex;flex-direction:column;gap:14px}
+.app{position:relative;box-sizing:border-box;max-width:560px;margin:0 auto;height:100vh;height:100dvh;overflow:hidden;background:radial-gradient(120% 60% at 50% 0%,#2b3170 0%,var(--night) 55%,var(--deep) 100%);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:0;display:flex;flex-direction:column;gap:10px}
 .app>*{flex:none}
-button{font-family:var(--body);cursor:pointer;border:0;color:inherit}
+/* 上はスクロールする中身、下は親指で押すドック */
+.app>.scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:14px;padding:2px 2px 16px;margin:0 -2px}
+.scroll>*{flex:none}
+.dock{display:flex;flex-direction:column;gap:8px;padding-top:4px;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+.sound{white-space:nowrap;flex:none}
+@media (min-width:700px){.choice{min-height:clamp(110px,15dvh,180px);font-size:2.6rem}.choice.k{font-size:4rem}.choice.l5{font-size:2.1rem}.choice.l7{font-size:1.7rem}.choice.mean{font-size:1.3rem}.prompt .big{font-size:5rem}.prompt .ask{font-size:1.6rem}}
+.swipehint{font-size:.68rem;color:var(--muted);text-align:center;letter-spacing:.04em}
+.ver{font-family:var(--body);font-size:.68rem;font-weight:900;color:var(--gold);border:1px solid var(--gold);border-radius:99px;padding:1px 8px;vertical-align:.25em;letter-spacing:0;white-space:nowrap}
+.swipe-l{animation:sl .25s ease-out}.swipe-r{animation:sr .25s ease-out}
+@keyframes sl{from{transform:translateX(30px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes sr{from{transform:translateX(-30px);opacity:.3}to{transform:none;opacity:1}}
+button{font-family:var(--body);cursor:pointer;border:0;color:inherit;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 h1{font-family:var(--display);font-weight:400;font-size:1.5rem;line-height:1.25;margin:0;text-wrap:balance;letter-spacing:.02em}
 h2{font-family:var(--display);font-weight:400;font-size:1.05rem;margin:0;letter-spacing:.04em}
@@ -125,8 +141,8 @@ h2{font-family:var(--display);font-weight:400;font-size:1.05rem;margin:0;letter-
 .item.on{border-color:var(--gold)}
 .item.lock{opacity:.75}
 /* battle */
-.app.battle{gap:10px}
-.arena{position:relative;height:130px;border-radius:14px;overflow:hidden;display:flex;justify-content:space-between;align-items:flex-end;padding:0 10px 6px}
+.app.battle{gap:8px;padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+.arena{position:relative;height:clamp(88px,17dvh,170px);border-radius:14px;overflow:hidden;display:flex;justify-content:space-between;align-items:flex-end;padding:0 10px 6px}
 .plate{position:absolute;top:8px;background:rgba(10,12,30,.62);border-radius:8px;padding:4px 8px;width:42%;display:flex;flex-direction:column;gap:3px}
 .plate .name{font-weight:900;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plate.l{left:8px} .plate.r{right:8px}
@@ -149,13 +165,13 @@ h2{font-family:var(--display);font-weight:400;font-size:1.05rem;margin:0;letter-
 .qhead{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;color:var(--muted);gap:8px}
 .qtype{background:var(--gold);color:var(--ink);font-weight:900;padding:2px 10px;border-radius:99px;font-size:.75rem;white-space:nowrap}
 .hintb{background:var(--good);color:var(--ink);font-weight:900;padding:2px 10px;border-radius:99px;font-size:.75rem}
-.prompt{background:var(--paper);color:var(--ink);border-radius:14px;height:180px;padding:8px 12px;text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center}
+.prompt{background:var(--paper);color:var(--ink);border-radius:14px;flex:1 1 auto!important;min-height:104px;padding:8px 12px;text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center}
 .prompt .big{font-family:var(--kanji);font-size:4rem;line-height:1.05;letter-spacing:.06em}
 .prompt .big em{font-style:normal;color:var(--shu)}
 .prompt .ask{font-size:1.35rem;font-weight:900;color:#5a4f70;line-height:1.3}
-.prompt svg.strk{flex:none;height:128px;width:128px}
+.prompt svg.strk{flex:0 1 auto;min-height:0;height:clamp(76px,22dvh,170px);width:auto;aspect-ratio:1}
 .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.choice{background:var(--panel);border:3px solid var(--line);border-radius:16px;padding:10px;font-size:clamp(1.5rem,7vw,2.2rem);font-weight:900;min-height:108px;text-align:center;box-shadow:0 4px 0 var(--deep);line-height:1.3}
+.choice{background:var(--panel);border:3px solid var(--line);border-radius:16px;padding:10px;font-size:clamp(1.5rem,7vw,2.2rem);font-weight:900;min-height:clamp(80px,13.5dvh,132px);text-align:center;box-shadow:0 4px 0 var(--deep);line-height:1.3}
 .choice:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--deep)}
 .choice.k{font-family:var(--kanji);font-size:3.4rem;font-weight:600}
 .choice.l5{font-size:clamp(1.25rem,5.6vw,1.8rem)} .choice.l7{font-size:clamp(1.05rem,4.4vw,1.45rem)}
@@ -164,10 +180,10 @@ h2{font-family:var(--display);font-weight:400;font-size:1.05rem;margin:0;letter-
 .choice.ng{background:var(--shu);border-color:var(--shu);color:#fff}
 .choice.gone{opacity:.15}
 .choice:disabled{cursor:default}
-@media (max-height:700px){.arena{height:96px}.prompt{height:146px}.prompt svg.strk{height:96px;width:96px}.prompt .big{font-size:3.2rem}.choice{min-height:86px}}
+@media (max-height:640px){.prompt .big{font-size:3rem}.prompt .ask{font-size:1.1rem}}
 #after:empty{display:none}
-#after{position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));top:0;z-index:5}
-.sheet{display:flex;flex-direction:column;gap:10px;box-shadow:0 -6px 30px rgba(0,0,0,.55);border-color:var(--gold);animation:up .25s ease-out}
+#after{position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:5}
+.sheet{display:flex;flex-direction:column;gap:10px;max-height:calc(100dvh - 110px);overflow:auto;box-shadow:0 -6px 30px rgba(0,0,0,.55);border-color:var(--gold);animation:up .25s ease-out}
 @keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
 svg.strk{background:var(--paper);border:2px solid var(--shu);border-radius:4px}
 svg.strk .g{stroke:var(--grid);stroke-width:.8;stroke-dasharray:3 3;fill:none}
@@ -1339,6 +1355,8 @@ function animateStrokes(svg){
 const skyCSS=st=>`linear-gradient(to bottom,${st.sky[0]},${st.sky[1]} 74%,${st.ground} 74%)`;
 
 /* ===================== 保存 ===================== */
+const VER="1.1";
+const VERTAG=`<span class="ver">Ver.${VER}</span>`;
 const KEY="eiya-kanji-v3",DAY=864e5,INT=[1,3,7,14,30],MASTER=3,LIMIT=5000;
 const fmt=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const dayStr=off=>{const d=new Date();d.setDate(d.getDate()+off);return fmt(d)};
@@ -1442,21 +1460,32 @@ const soundBtn=()=>`<button class="sound" id="snd" aria-pressed="${S.sound}">${S
 function bindSound(){const b=$("#snd");if(b)b.onclick=()=>{toggleSound();b.setAttribute("aria-pressed",S.sound);b.textContent=S.sound?"♪ 音あり":"音なし"}}
 const beaten=()=>MON.filter(m=>(S.mdex[m.id]||0)>=2).length;
 const mastered=()=>DATA.filter(d=>isM(d.k)).length;
-function screen(name,cls="app"){SCREEN=name;clearTimer();app.className=cls;app.scrollTop=0}
+let SW={};
+function screen(name,cls="app"){SCREEN=name;clearTimer();app.className=cls;app.scrollTop=0;SW={}}
+// フリック（スワイプ）操作
+(function(){let sx=null,sy=0,st=0;
+ app.addEventListener("touchstart",e=>{if(e.touches.length!==1){sx=null;return}const t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now()},{passive:true});
+ app.addEventListener("touchend",e=>{if(sx===null)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;sx=null;
+  if(dt>700)return;
+  if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.6){const f=dx<0?SW.left:SW.right;if(f)f()}
+  else if(Math.abs(dy)>60&&Math.abs(dy)>Math.abs(dx)*1.6){const f=dy<0?SW.up:SW.down;if(f)f()}},{passive:true});
+})();
+const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
 function dots(k){const n=Math.min(S.mastery[k]||0,MASTER);return `<span class="dots">${[0,1,2].map(i=>`<i class="${i<n?"on":""}"></i>`).join("")}</span>`}
 
 /* ===================== 物語 ===================== */
 function story(){
  screen("story");playBgm("home");
- app.innerHTML=`<div class="panel story">
-  <div class="eyebrow">PROLOGUE</div><h1>勇者エイヤの漢字冒険</h1>
+ app.innerHTML=`<div class="scroll"><div class="panel story">
+  <div class="eyebrow">PROLOGUE</div><h1>勇者エイヤの漢字冒険 ${VERTAG}</h1>
   <div class="mon">${monsterSVG(MON[22])}</div>
   <p>ある日、魔王<b style="color:var(--gold)">モジクライ</b>が<br>世界じゅうの漢字をうばってしまった。<br>町から文字が消え、看板も本も まっしろに…。</p>
   <p>漢字を覚えるたびに、文字は町にもどってくる。<br>1026の文字を取りもどせ、勇者エイヤ！</p>
   <div class="mon">${heroSVG()}</div>
   <div style="width:100%"><div class="eyebrow" style="margin-bottom:8px">何年生の国から はじめる？</div>
   <div class="grades" style="justify-content:center">${[0,1,2,3,4,5].map(c=>`<button class="chip" data-c="${c}" aria-pressed="${S.country===c}">${c+1}年</button>`).join("")}</div></div>
-  <button class="btn" id="start">冒険をはじめる</button></div>`;
+  </div></div>
+ <div class="dock"><button class="btn" id="start">冒険をはじめる</button></div>`;
  app.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{SE.tap();S.country=+b.dataset.c;S.town=CTOWNS[S.country][0];app.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",x===b))});
  $("#start").onclick=()=>{S.story=true;if(TOWNS[S.town].c!==S.country)S.town=CTOWNS[S.country][0];save();SE.fanfare&&audio()&&SE.tap();home()};
 }
@@ -1471,7 +1500,7 @@ function nextGoal(){
  const left=t.ks.length-townDone(t);
  return ["町の封印",`${t.name}の封印まで あと${left}字`];
 }
-function home(){
+function home(dir){
  if(!S.story)return story();
  screen("home");playBgm("home");ensureQuest();
  const c=TOWNS[S.town].c,st=STAGES[c],t=TOWNS[S.town];
@@ -1494,8 +1523,8 @@ function home(){
  if(!S.restored[t.id]&&townReady(t))act=`<button class="btn gold" id="go" data-mode="guard">門番にいどむ（町を取りもどす）</button>`;
  else act=`<button class="btn" id="go" data-mode="town">${t.name}でたたかう</button>`;
  const king=countryRestored(c)&&!S.kings[c]?`<button class="btn gold" id="king">${st.n}の王にいどむ</button>`:"";
- app.innerHTML=`
- <div class="row between"><div><div class="eyebrow">KANJI QUEST</div><h1>勇者エイヤの漢字冒険</h1></div>${soundBtn()}</div>
+ app.innerHTML=`<div class="scroll" id="sc">
+ <div class="row between"><div><div class="eyebrow">KANJI QUEST</div><h1>勇者エイヤの漢字冒険 ${VERTAG}</h1></div>${soundBtn()}</div>
  <div class="panel hero-card">${heroSVG()}
   <div class="stats"><div class="row between"><b>エイヤ <span class="tag gold">${titleText()}</span></b><span class="lv num">Lv.${S.lv}</span></div>
   <div class="bar thin"><i style="width:${Math.min(100,S.xp/need(S.lv)*100)}%"></i></div>
@@ -1503,15 +1532,14 @@ function home(){
   <div class="muted small">取りもどした文字 <b class="num" style="color:var(--text)">${mastered()}</b> / 1026</div></div></div>
  <div class="ribbon"><b>${gl}</b><span>${gt}</span></div>
  ${rv.length?`<div class="panel rustbox row between"><div><b style="color:#f2c9a6">さびた漢字が ${rv.length}字</b><div class="muted small">サビゴーストをたおして みがき直そう</div></div><button class="btn sub" id="rust" style="width:auto;padding:10px 14px">たいじ</button></div>`:""}
- <div class="ctabs">${STAGES.map((s,i)=>`<button class="ctab ${S.kings[i]?"done":""}" data-c="${i}" aria-pressed="${i===c}" style="background:${skyCSS(s)}">${i+1}年<small>${kyu(i)}${S.kings[i]?"★":""}</small></button>`).join("")}</div>
+ <div class="ctabs" id="ctabs">${STAGES.map((s,i)=>`<button class="ctab ${S.kings[i]?"done":""}" data-c="${i}" aria-pressed="${i===c}" style="background:${skyCSS(s)}">${i+1}年<small>${kyu(i)}${S.kings[i]?"★":""}</small></button>`).join("")}</div>
  <div class="cbanner" style="background:${skyCSS(st)}"><div class="row between"><h2>${st.n}</h2><span class="tag" style="background:rgba(0,0,0,.4)">${kyu(c)}の国</span></div>
   <div class="row between small"><span>取りもどした町 <b class="num">${restoredN}</b> / ${ctown.length}</span><span>${S.kings[c]?"国を解放した！":"ぜんぶの町で 国の王が出る"}</span></div></div>
  <div class="towns">${tiles}</div>
  <div class="panel" style="display:flex;flex-direction:column;gap:10px">
   <div class="row between"><h2>${t.name}</h2><span class="tag ${S.restored[t.id]?"gold":""}">${S.restored[t.id]?"取りもどした町":`覚えた漢字 ${dn}/${t.ks.length}`}</span></div>
   <div class="kchips">${t.ks.map(k=>`<div class="kc ${isR(k)?"r":isM(k)?"m":""}"><span class="kk">${k}</span>${dots(k)}</div>`).join("")}</div>
-  <div class="muted small">1字につき3回せいかいで「覚えた」。全部覚えると門番があらわれる。</div>
-  ${act}${king}</div>
+  <div class="muted small">1字につき3回せいかいで「覚えた」。全部覚えると門番があらわれる。</div></div>
  <div class="panel" style="display:flex;flex-direction:column;gap:8px">
   <div class="row between"><h2>今日のクエスト</h2><span class="tag">${S.quest.claimed?"受け取りずみ":"3つで宝箱"}</span></div>${qs}
   ${qAllDone()&&!S.quest.claimed?`<button class="btn gold" id="claim">クエスト宝箱を受け取る</button>`:""}</div>
@@ -1521,13 +1549,18 @@ function home(){
    <div style="text-align:right"><span class="tag">${S.last===today()?"今日の冒険 クリア！":"今日の冒険 まだ"}</span><div class="muted small" style="margin-top:4px"><i class="shield"></i>おやすみの盾 ${S.shield}こ</div></div></div>
   <div class="week">${week}</div>
   <div class="muted small" style="margin-top:8px">1日休んでも、おやすみの盾が れんぞく日数を守ってくれる（1週間に1こ）</div></div>
- <div class="trio"><button class="btn sub" id="kdex">漢字<br>ずかん</button><button class="btn sub" id="mdex">モンスター<br>・なかま</button><button class="btn sub" id="equip">そうび<br>・ショップ</button></div>
- <p class="credit">書き順データ：<a href="https://kanjivg.tagaini.net/" target="_blank" rel="noopener">KanjiVG</a>（Ulrich Apel, CC BY-SA 3.0）</p>`;
+ <p class="credit">書き順データ：<a href="https://kanjivg.tagaini.net/" target="_blank" rel="noopener">KanjiVG</a>（Ulrich Apel, CC BY-SA 3.0）　${VERTAG}</p></div>
+ <div class="dock">${king||act}
+  <div class="trio"><button class="btn sub" id="kdex">漢字<br>ずかん</button><button class="btn sub" id="mdex">モンスター<br>・なかま</button><button class="btn sub" id="equip">そうび<br>・ショップ</button></div>
+  <div class="swipehint">← 左右にスワイプで 国をきりかえ →</div></div>`;
  bindSound();
- app.querySelectorAll(".ctab").forEach(b=>b.onclick=()=>{SE.tap();const cc=+b.dataset.c;S.country=cc;
-  const ts=CTOWNS[cc].map(i=>TOWNS[i]);S.town=(ts.find(x=>townUnlocked(x)&&!S.restored[x.id])||ts[0]).id;save();home()});
+ if(dir){const sc=$("#sc");sc.classList.add(dir==="l"?"swipe-l":"swipe-r");const ct=$("#ctabs");if(ct)sc.scrollTop=Math.max(0,ct.offsetTop-sc.offsetTop-8)}
+ const goCountry=(cc,dir)=>{if(cc<0||cc>5)return;SE.tap();S.country=cc;
+  const ts=CTOWNS[cc].map(i=>TOWNS[i]);S.town=(ts.find(x=>townUnlocked(x)&&!S.restored[x.id])||ts[0]).id;save();home(dir)};
+ app.querySelectorAll(".ctab").forEach(b=>b.onclick=()=>goCountry(+b.dataset.c));
+ SW.left=()=>goCountry(c+1,"l");SW.right=()=>goCountry(c-1,"r");
  app.querySelectorAll(".town").forEach(b=>b.onclick=()=>{SE.tap();S.town=+b.dataset.t;save();home()});
- $("#go").onclick=e=>startBattle(e.currentTarget.dataset.mode);
+ if($("#go"))$("#go").onclick=e=>startBattle(e.currentTarget.dataset.mode);
  if($("#king"))$("#king").onclick=()=>startBattle("king");
  if($("#rust"))$("#rust").onclick=()=>startBattle("rust");
  if($("#claim"))$("#claim").onclick=()=>{S.quest.claimed=true;save();chestScreen(true,"今日のクエスト達成！")};
@@ -1561,8 +1594,8 @@ function bindChest(gold){
 }
 function chestScreen(gold,label){
  screen("chest");stopBgm();
- app.innerHTML=`<div class="panel result"><div class="eyebrow">REWARD</div><h1>${label}</h1>${chestHTML(gold,"ごほうび")}</div><button class="btn sub" id="back">ホームへもどる</button>`;
- bindChest(gold);$("#back").onclick=home;
+ app.innerHTML=`<div class="scroll"><div class="panel result"><div class="eyebrow">REWARD</div><h1>${label}</h1>${chestHTML(gold,"ごほうび")}</div></div><div class="dock"><button class="btn sub" id="back">ホームへもどる</button></div>`;
+ bindChest(gold);$("#back").onclick=()=>home();SW.right=()=>home();
 }
 function addAlly(m){S.allies[m.id]=1;if(S.party.length<2&&!S.party.includes(m.id))S.party.push(m.id)}
 
@@ -1571,14 +1604,15 @@ function kanjiDex(){
  screen("dex");SE.tap();
  const g=S.dexGrade||1,pool=DATA.filter(d=>d.g===g);
  const dex=pool.map(d=>{const c=S.mastery[d.k]||0;return `<button data-k="${d.k}" class="${isR(d.k)?"r":c>=MASTER?"m":c===2?"l2":c===1?"l1":""}" aria-label="${d.k}">${d.k}</button>`}).join("");
- app.innerHTML=`<div class="row"><button class="chip" id="back">← もどる</button></div>
+ app.innerHTML=`<div class="scroll">
  <h1>漢字ずかん</h1>
  <div class="grades">${[1,2,3,4,5,6].map(i=>`<button class="chip" data-g="${i}" aria-pressed="${g===i}">${i}年</button>`).join("")}</div>
  <div class="panel"><div class="row between"><b>${g}年（${kyu(g-1)}）</b><span class="muted small num">覚えた ${pool.filter(d=>isM(d.k)).length} / ${pool.length}字</span></div><div class="dex">${dex}</div>
   <div class="legend"><span>うすい＝まだ</span><span>白文字＝あと1回</span><span style="color:var(--paper)">紙の色＝覚えた</span><span style="color:#f2c9a6">茶色＝さびた</span></div></div>
- <div id="detail" class="panel muted small">漢字をタップすると、書き順と熟語が見られます。</div>`;
- $("#back").onclick=home;
+ <div id="detail" class="panel muted small">漢字をタップすると、書き順と熟語が見られます。</div></div><div class="dock"><button class="btn sub" id="back">← もどる</button><div class="swipehint">右にスワイプでも もどれる</div></div>`;
+ $("#back").onclick=()=>home();SW.right=()=>home();
  app.querySelectorAll(".grades .chip").forEach(b=>b.onclick=()=>{S.dexGrade=+b.dataset.g;save();kanjiDex()});
+ app.querySelectorAll(".dex button").forEach(b=>b.addEventListener("click",()=>setTimeout(()=>$("#detail").scrollIntoView({behavior:"smooth",block:"nearest"}),50)));
  app.querySelectorAll(".dex button").forEach(b=>b.onclick=()=>{const d=BYK[b.dataset.k];const el=$("#detail");el.classList.remove("muted","small");el.innerHTML=explainHTML(d);animateStrokes(el.querySelector("svg.strk"))});
 }
 function monsterDex(){
@@ -1589,12 +1623,12 @@ function monsterDex(){
   <div class="mdex">${MON.filter(m=>m.st===si).map(m=>{const v=S.mdex[m.id]||0;const cls=v>=2?"":v===1?"seen":"unseen";
    return `<button class="mcell ${cls} ${m.kind} ${S.allies[m.id]?"ally":""} ${S.party.includes(m.id)?"inparty":""}" data-m="${m.id}">${monsterSVG(m)}<span class="kind">${kindJ[m.kind]}</span><span class="nm">${v?m.n:"？？？"}</span></button>`}).join("")}</div></div>`).join("");
  const rareN=MON.filter(m=>m.kind==="rare"&&(S.mdex[m.id]||0)>=2).length;
- app.innerHTML=`<div class="row"><button class="chip" id="back">← もどる</button></div>
+ app.innerHTML=`<div class="scroll">
  <div><h1>モンスター・なかま</h1><p class="muted small" style="margin:4px 0 0">たおした数 <b class="num" style="color:var(--gold)">${beaten()}</b> / 24　レア <b class="num" style="color:var(--gold)">${rareN}</b> / 6　なかま <b class="num" style="color:var(--good)">${Object.keys(S.allies).length}</b>　${beaten()===24?"<b style='color:var(--gold)'>コンプリート！</b>":""}</p></div>
  <div class="panel" style="display:flex;flex-direction:column;gap:8px"><h2>つれていく なかま（2匹まで）</h2><div class="party">${slots}</div><div id="minfo" class="muted small">緑のわくのモンスターがなかま。タップで つれていく／はずす。</div></div>
  <div class="panel" style="display:flex;flex-direction:column;gap:14px">${rows}
- <p class="muted small" style="margin:0">黒いかげ＝まだ会っていない　うすい＝会ったけど、たおしていない<br>たおしたモンスターは、ときどき なかまになる。宝箱から出てくることも。</p></div>`;
- $("#back").onclick=home;
+ <p class="muted small" style="margin:0">黒いかげ＝まだ会っていない　うすい＝会ったけど、たおしていない<br>たおしたモンスターは、ときどき なかまになる。宝箱から出てくることも。</p></div></div><div class="dock"><button class="btn sub" id="back">← もどる</button><div class="swipehint">右にスワイプでも もどれる</div></div>`;
+ $("#back").onclick=()=>home();SW.right=()=>home();
  app.querySelectorAll(".mcell").forEach(b=>b.onclick=()=>{
   const m=MON[+b.dataset.m],v=S.mdex[m.id]||0;const info=$("#minfo");
   if(!v){info.textContent="まだ会っていないモンスター。";return}
@@ -1602,7 +1636,7 @@ function monsterDex(){
   SE.tap();
   if(S.party.includes(m.id))S.party=S.party.filter(x=>x!==m.id);
   else{if(S.party.length>=2)S.party.shift();S.party.push(m.id)}
-  save();monsterDex();
+  const y=$(".scroll").scrollTop;save();monsterDex();$(".scroll").scrollTop=y;
  });
 }
 function equipScreen(){
@@ -1610,15 +1644,16 @@ function equipScreen(){
  const list=["sw","hm","cp"].map(sl=>`<div style="display:flex;flex-direction:column;gap:6px"><b class="small">${SLOTN[sl]}</b><div class="items">${ITEMS.filter(i=>i.slot===sl).map(i=>{const own=S.own.includes(i.id),on=S.eq[sl]===i.id;
   const sw=i.c==="rainbow"?"linear-gradient(90deg,#ff6b6b,#ffd93d,#4dd4a8,#6b8bff)":i.c;
   return `<button class="item ${on?"on":""} ${own?"":"lock"}" data-i="${i.id}"><span class="sw" style="background:${sw}"></span><b>${i.n}</b><span class="muted small">${on?"そうび中":own?"タップでそうび":`<i class="coin"></i>${i.p}で買う`}</span></button>`}).join("")}</div></div>`).join("");
- app.innerHTML=`<div class="row"><button class="chip" id="back">← もどる</button></div>
+ app.innerHTML=`<div class="scroll">
  <div class="row between"><h1>そうび・ショップ</h1><span class="tag gold"><i class="coin"></i><span class="num">${S.coins}</span></span></div>
  <div class="panel" style="display:flex;justify-content:center"><div style="width:120px">${heroSVG()}</div></div>
  <div id="msg" class="muted small" style="text-align:center">コインはバトルや宝箱で手に入る。宝箱からそうびが出ることも。</div>
- <div class="panel" style="display:flex;flex-direction:column;gap:14px">${list}</div>`;
- $("#back").onclick=home;
+ <div class="panel" style="display:flex;flex-direction:column;gap:14px">${list}</div></div><div class="dock"><button class="btn sub" id="back">← もどる</button><div class="swipehint">右にスワイプでも もどれる</div></div>`;
+ $("#back").onclick=()=>home();SW.right=()=>home();
  app.querySelectorAll(".item").forEach(b=>b.onclick=()=>{const it=IT[b.dataset.i];
-  if(S.own.includes(it.id)){S.eq[it.slot]=it.id;SE.tap();save();equipScreen();return}
-  if(S.coins>=it.p){S.coins-=it.p;S.own.push(it.id);S.eq[it.slot]=it.id;SE.chest();save();equipScreen()}
+  const y=$(".scroll").scrollTop;
+  if(S.own.includes(it.id)){S.eq[it.slot]=it.id;SE.tap();save();equipScreen();$(".scroll").scrollTop=y;return}
+  if(S.coins>=it.p){S.coins-=it.p;S.own.push(it.id);S.eq[it.slot]=it.id;SE.chest();save();equipScreen();$(".scroll").scrollTop=y}
   else{$("#msg").textContent=`コインがあと ${it.p-S.coins} 足りない`;SE.ng()}});
 }
 
@@ -1687,7 +1722,7 @@ function renderQ(){
  <div class="choices">${q.opts.map(o=>`<button class="choice ${choiceCls(o)}">${o}</button>`).join("")}</div>
  <div id="after"></div>`;
  bindSound();
- $("#quit").onclick=()=>{clearTimer();home()};
+ SW={};$("#quit").onclick=()=>{clearTimer();home()};
  app.querySelectorAll(".choice").forEach(b=>b.onclick=()=>answer(b,q));
  if($("#hint"))$("#hint").onclick=()=>{const w=[...app.querySelectorAll(".choice:not(.gone)")].filter(b=>b.textContent!==q.correct);if(!w.length||B.sk.hint<=0)return;
   const x=shuffle(w)[0];x.classList.add("gone");x.disabled=true;B.sk.hint--;SE.tap();$("#hint").textContent="ヒント×"+B.sk.hint;if(B.sk.hint<=0)$("#hint").disabled=true};
@@ -1722,7 +1757,7 @@ function answer(btn,q){
   popText("-"+dmg,"right");if(fast)popText("はやわざ！","left","#ffe27a");
   verdict=B.combo>=3?"会心の一撃！":fast?"はやわざ せいかい！":"せいかい！";
  }else{
-  if(btn)btn.classList.add("ng");B.combo=0;
+  if(btn)btn.classList.add("ng");B.combo=0;buzz(60);
   if(!S.wrong.includes(k))S.wrong.push(k);
   if(isM(k)&&S.rv[k]){S.rv[k].t=0;S.rv[k].n=Math.max(0,S.rv[k].n-1);extra="この漢字は さびてしまった…"}
   if(B.sk.guard>0){B.sk.guard--;popText("なかまが守った！","left","#46c48a");SE.ng()}
@@ -1734,10 +1769,10 @@ function answer(btn,q){
  const end=B.hp<=0||B.mhp<=0||B.i===B.qs.length-1;
  $("#after").innerHTML=`<div class="panel sheet">
   <div class="row between"><div class="verdict ${ok?"ok":"ng"}">${verdict}</div>${extra?`<span class="tag ${ok?"gold":""}">${extra}</span>`:""}</div>${explainHTML(d,q.type==="stroke"?q.red:-1)}
-  <button class="btn" id="next">${end?"けっかを見る":"つぎの問題へ"}</button></div>`;
- $("#after").style.top=$(".prompt").offsetTop+"px";
+  <button class="btn" id="next">${end?"けっかを見る":"つぎの問題へ"}</button><div class="swipehint">上にスワイプでも つぎへ</div></div>`;
  animateStrokes($("#after svg.strk"));
- $("#next").onclick=()=>{SE.tap();if(end)finish();else{B.i++;renderQ()}};
+ $("#next").onclick=()=>{SW={};SE.tap();if(end)finish();else{B.i++;renderQ()}};
+ SW.up=()=>{const n=$("#next");if(n)n.click()};
  save();
 }
 function explainHTML(d,red=-1){
@@ -1784,7 +1819,7 @@ function finish(){
  if(B.mode==="town"){progress=townReady(t)?`<div class="tag gold" style="font-size:.85rem">${t.name}の漢字を全部覚えた！ 門番に挑戦できる</div>`:`<div class="muted small">${t.name}の封印まで あと <b style="color:var(--gold)">${left}字</b></div>`}
  const lostMsg=B.hp<=0?"エイヤは一度もどった…":m.kind==="rare"?`${m.n}は にげてしまった…`:`${m.n}は まだ元気だ…`;
  const head=restored?`${t.name}に文字がもどった！`:kingWin?`${STAGES[t.c].n}を解放した！`:win?`${B.label}${m.n}をたおした！`:lostMsg;
- app.innerHTML=`<div class="panel result">
+ app.innerHTML=`<div class="scroll"><div class="panel result">
   <div class="eyebrow">${win?"VICTORY":"RETREAT"}</div><h1>${head}</h1>
   ${restored?`<div class="learned">${t.ks.map(k=>`<span>${k}</span>`).join("")}</div><div class="muted small">町の看板や本に 文字がもどった。つぎの町への道が開いた！</div>`:""}
   ${kingWin?`<div class="tag gold" style="font-size:1rem;padding:6px 14px">称号「${kyu(t.c)}の勇者」を手に入れた！</div><div class="muted small">漢検${kyu(t.c)}は、${t.c+1}年生で習う漢字のレベル</div>`:""}
@@ -1802,8 +1837,8 @@ function finish(){
   ${sm&&sm.used?`<div class="muted small"><i class="shield"></i>おやすみの盾が れんぞく日数を守った！</div>`:""}
   ${sm?`<div class="muted small">今日の冒険クリア！ れんぞく${S.streak}日</div>`:""}
   ${showDone?`<div class="notice"><b style="color:var(--gold);font-family:var(--display);font-weight:400;font-size:1.1rem">今日はここまで！</b><span class="small">今日のクエストを ぜんぶ達成した。ホームで宝箱を受け取ろう。<br>また明日、冒険のつづきをしよう。</span></div>`:""}
- </div>
- <div id="nextbtns" style="display:flex;flex-direction:column;gap:10px"></div>`;
+ </div></div>
+ <div class="dock" id="nextbtns"></div>`;
  bindChest(gold);
  const nb=$("#nextbtns");let html="";
  if(B.mode==="town"&&townReady(t))html+=`<button class="btn gold" id="n1">門番にいどむ</button>`;
@@ -1813,9 +1848,9 @@ function finish(){
  html+=`<button class="btn sub" id="back">ホームへもどる</button>`;nb.innerHTML=html;
  if($("#n1"))$("#n1").onclick=()=>startBattle("guard");
  if($("#n2"))$("#n2").onclick=()=>startBattle("king");
- if($("#n3"))$("#n3").onclick=home;
+ if($("#n3"))$("#n3").onclick=()=>home();
  if($("#n4"))$("#n4").onclick=()=>startBattle(B.mode);
- $("#back").onclick=home;
+ $("#back").onclick=()=>home();SW.right=()=>home();
 }
 home();
 </script>
