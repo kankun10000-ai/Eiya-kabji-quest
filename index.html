@@ -93,6 +93,9 @@ body{background:var(--deep);color:var(--text);font-family:var(--body);font-size:
 .tlist{display:flex;flex-direction:column;gap:6px;padding:10px}
 .trow{display:grid;grid-template-columns:5.2em 1fr auto;grid-template-rows:auto auto;column-gap:10px;row-gap:3px;align-items:center;text-align:left;background:var(--deep);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
 .trow .bar{grid-column:2;grid-row:1}.trow>.small{grid-column:2;grid-row:2}.trow .tag{grid-column:3;grid-row:1/3}.trow>b{grid-row:1/3}
+.code{width:100%;box-sizing:border-box;height:64px;resize:none;background:var(--deep);color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:8px;font-size:.7rem;font-family:ui-monospace,monospace;word-break:break-all}
+label.btn{display:block;cursor:pointer;box-sizing:border-box}
+#savechip{color:var(--good)}
 .swipehint{font-size:.68rem;color:var(--muted);text-align:center;letter-spacing:.04em}
 .ver{font-family:var(--body);font-size:.68rem;font-weight:900;color:var(--gold);border:1px solid var(--gold);border-radius:99px;padding:1px 8px;vertical-align:.25em;letter-spacing:0;white-space:nowrap}
 .swipe-l{animation:sl .25s ease-out}.swipe-r{animation:sr .25s ease-out}
@@ -1413,22 +1416,34 @@ function animateStrokes(svg){
 const skyCSS=st=>`linear-gradient(to bottom,${st.sky[0]},${st.sky[1]} 74%,${st.ground} 74%)`;
 
 /* ===================== 保存 ===================== */
-const VER="1.4";
+const VER="1.6";
 const VERTAG=`<span class="ver">Ver.${VER}</span>`;
-const KEY="eiya-kanji-v3",DAY=864e5,INT=[1,3,7,14,30],MASTER=3,LIMIT=5000;
+const KEY="eiya-kanji-v3",DAY=864e5,INT=[1,3,7,14,30],MASTER=2,LIMIT=5000;
 const fmt=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const dayStr=off=>{const d=new Date();d.setDate(d.getDate()+off);return fmt(d)};
 const today=()=>dayStr(0);
 function weekId(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return fmt(d)}
 function def(){return {lv:1,xp:0,coins:0,streak:0,last:null,days:[],shDays:[],shield:1,shieldWeek:null,mastery:{},rv:{},wrong:[],mdex:{},allies:{},party:[],own:["sw1","hm0","cp0"],eq:{sw:"sw1",hm:"hm0",cp:"cp0"},restored:{},kings:{},country:0,town:0,quest:null,doneDay:null,story:false,sound:true,dexGrade:1}}
 let S=def();
-try{const raw=localStorage.getItem(KEY);
- if(raw)S=Object.assign(S,JSON.parse(raw));
+try{let raw=localStorage.getItem(KEY),data=null;
+ try{data=raw?JSON.parse(raw):null}catch(e){data=null}
+ if(!data){const bak=localStorage.getItem(KEY+"-bak");if(bak)try{data=JSON.parse(bak)}catch(e){}}   // こわれていたら予備から
+ if(data){S=Object.assign(S,data);raw=true}
+ if(raw){}
  else{const old=localStorage.getItem("eiya-kanji-v2");
   if(old){const o=JSON.parse(old);["lv","xp","streak","last","days","mastery","wrong","mdex","sound"].forEach(k=>{if(o[k]!==undefined)S[k]=o[k]});
    Object.keys(S.mastery).forEach(k=>{if(S.mastery[k]>=MASTER)S.rv[k]={t:Date.now(),n:0}});S.story=true}}
 }catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+// 自動セーブ：1問ごと＋画面を閉じるとき。10分ごとに予備も残す
+const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")};
+const save=()=>{try{S.savedAt=Date.now();if(!S.bakAt||S.savedAt-S.bakAt>6e5){S.bakAt=S.savedAt;localStorage.setItem(KEY+"-bak",JSON.stringify(S))}
+ localStorage.setItem(KEY,JSON.stringify(S));const el=document.getElementById("savechip");if(el)el.textContent="保存 "+hm(S.savedAt)}catch(e){}};
+window.addEventListener("pagehide",save);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")save()});
+let persistAsked=false;
+document.addEventListener("pointerdown",()=>{if(persistAsked)return;persistAsked=true;try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}},{capture:true});
+// 1回目の手直し：覚えた数の条件が変わったので、新しく「覚えた」になった字にも復習日をつける
+Object.keys(S.mastery).forEach(k=>{if(S.mastery[k]>=MASTER&&!S.rv[k])S.rv[k]={t:Date.now(),n:0}});
 if(S.shieldWeek!==weekId()){S.shield=1;S.shieldWeek=weekId()}
 const need=lv=>40+lv*20;
 const isM=k=>(S.mastery[k]||0)>=MASTER;
@@ -1437,9 +1452,10 @@ const rustList=()=>Object.keys(S.rv).filter(isR);
 const reviewList=()=>[...new Set([...S.wrong,...rustList()])].filter(k=>BYK[k]);
 const townUnlocked=t=>t.i===0||!!S.restored[CTOWNS[t.c][t.i-1]];
 const townDone=t=>t.ks.filter(isM).length;
-const townReady=t=>townDone(t)===t.ks.length&&!S.restored[t.id];
+const guardNeed=t=>Math.ceil(t.ks.length*0.8);
+const townReady=t=>townDone(t)>=guardNeed(t)&&!S.restored[t.id];
 const countryRestored=c=>CTOWNS[c].every(id=>S.restored[id]);
-const kingNeed=c=>Math.ceil(CTOWNS[c].length/2);
+const kingNeed=c=>Math.ceil(CTOWNS[c].length/3);
 const restoredIn=c=>CTOWNS[c].filter(id=>S.restored[id]).length;
 const kingReady=c=>!S.kings[c]&&restoredIn(c)>=kingNeed(c);
 const cUnlocked=c=>c===0||!!S.kings[c-1];
@@ -1539,7 +1555,7 @@ function screen(name,cls="app"){SCREEN=name;clearTimer();app.className=cls;app.s
   else if(Math.abs(dy)>60&&Math.abs(dy)>Math.abs(dx)*1.6){const f=dy<0?SW.up:SW.down;if(f)f()}},{passive:true});
 })();
 const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
-function dots(k){const n=Math.min(S.mastery[k]||0,MASTER);return `<span class="dots">${[0,1,2].map(i=>`<i class="${i<n?"on":""}"></i>`).join("")}</span>`}
+function dots(k){const n=Math.min(S.mastery[k]||0,MASTER);return `<span class="dots">${Array.from({length:MASTER},(_,i)=>`<i class="${i<n?"on":""}"></i>`).join("")}</span>`}
 
 /* ===================== 物語 ===================== */
 function story(){
@@ -1550,7 +1566,7 @@ function story(){
   <p>ある日、魔王<b style="color:var(--gold)">モジクライ</b>が<br>世界じゅうの漢字をうばってしまった。<br>町から文字が消え、看板も本も まっしろに…。</p>
   <p>漢字を覚えるたびに、文字は町にもどってくる。<br>1026の文字を取りもどせ、勇者エイヤ！</p>
   <div class="mon">${heroSVG()}</div>
-  <p class="small muted">冒険は 1年生の国から はじまる。<br>町を半分取りもどすと「国の王」があらわれ、<br>たおすと つぎの学年の国へ進める。</p>
+  <p class="small muted">冒険は 1年生の国から はじまる。<br>町を3つに1つ取りもどすと「国の王」があらわれ、<br>たおすと つぎの学年の国へ進める。</p>
   </div></div>
  <div class="dock"><button class="btn" id="start">冒険をはじめる</button></div>`;
  $("#start").onclick=()=>{S.story=true;if(!cUnlocked(TOWNS[S.town].c)){S.country=0;S.town=CTOWNS[0][0]}save();audio();SE.tap();home()};
@@ -1567,7 +1583,7 @@ function nextGoal(){
  if(rv>=5)return ["さび",`さびた漢字が ${rv}字。「きょう」でみがこう`];
  if(S.restored[t.id]){const nx=CTOWNS[c].map(i=>TOWNS[i]).find(x=>!S.restored[x.id]);if(nx)return ["つぎの町",`${nx.name}へ進もう`];}
  const kr=kingNeed(c)-restoredIn(c);
- return ["町の封印",`${t.name}の封印まで あと${t.ks.length-townDone(t)}字${!S.kings[c]&&kr>0?`（国の王まで あと${kr}町）`:""}`];
+ return ["町の封印",`${t.name}の門番まで あと${Math.max(0,guardNeed(t)-townDone(t))}字${!S.kings[c]&&kr>0?`（国の王まで あと${kr}町）`:""}`];
 }
 function home(dir){
  if(!S.story)return story();
@@ -1593,11 +1609,11 @@ function home(dir){
    <div style="min-width:0;display:flex;flex-direction:column;gap:3px">
     <div class="row between small"><b>Lv.${S.lv} <span class="tag gold">${titleText()}</span></b><span class="num"><i class="coin"></i><b style="color:var(--gold)">${S.coins}</b></span></div>
     <div class="bar thin"><i style="width:${Math.min(100,S.xp/need(S.lv)*100)}%"></i></div>
-    <div class="muted" style="font-size:.7rem">取りもどした文字 <b class="num" style="color:var(--text)">${mastered()}</b>/1026　れんぞく <b class="num" style="color:var(--gold)">${S.streak}</b>日</div></div></div>
+    <div class="muted" style="font-size:.7rem">取りもどした文字 <b class="num" style="color:var(--text)">${mastered()}</b>/1026　れんぞく <b class="num" style="color:var(--gold)">${S.streak}</b>日　<span id="savechip">${S.savedAt?"保存 "+hm(S.savedAt):"自動セーブ"}</span></div></div></div>
   <div class="ribbon"><b>${gl}</b><span>${gt}</span></div>
   <div class="ctabs" id="ctabs" style="grid-template-columns:repeat(${trueOpen()?7:6},1fr)">${STAGES.map((s,i)=>`<button class="ctab ${S.kings[i]?"done":""}" data-c="${i}" aria-pressed="${i===c}" style="background:${skyCSS(s)}" ${cUnlocked(i)?"":"disabled"}>${i+1}年<small>${cUnlocked(i)?kyu(i)+(S.kings[i]?"★":""):"とじてる"}</small></button>`).join("")}${trueOpen()?`<button class="ctab truetab" id="truetab">真<small>${S.trueHero?"★":"勇者"}</small></button>`:""}</div>
   <div class="panel mapbox"><div class="mh"><b>${st.n}</b><span class="muted">町 <b class="num" style="color:var(--text)">${restoredN}</b>/${ctown.length}　${S.kings[c]?"王をたおした国":kingReady(c)?`<b style="color:var(--gold)">王に挑戦できる</b>`:`王まで あと${kingNeed(c)-restoredN}町`}</span></div><div class="towns" style="grid-template-columns:repeat(${ctown.length>12?5:4},1fr)">${tiles}</div></div>
-  <div class="panel tdetail"><div class="row between"><b class="small">${t.name}</b><span class="tag ${S.restored[t.id]?"gold":""}">${S.restored[t.id]?"取りもどした町":`覚えた ${dn}/${t.ks.length}　全部で門番`}</span></div>
+  <div class="panel tdetail"><div class="row between"><b class="small">${t.name}</b><span class="tag ${S.restored[t.id]?"gold":""}">${S.restored[t.id]?"取りもどした町":(townReady(t)?`覚えた ${dn}/${t.ks.length}　門番があらわれた！`:`覚えた ${dn}/${t.ks.length}　あと${guardNeed(t)-dn}字で門番`)}</span></div>
    <div class="krow">${t.ks.map(k=>`<div class="kc ${isR(k)?"r":isM(k)?"m":""}"><span class="kk">${k}</span>${dots(k)}</div>`).join("")}</div></div>
  </div>
  <div class="dock">${act}
@@ -1631,6 +1647,51 @@ function trueRoad(){
  $("#tb").onclick=()=>{if(trueReady())startBattle("true")};
  $("#back").onclick=()=>home();
 }
+/* ===================== セーブデータ ===================== */
+async function makeCode(){const j=JSON.stringify(S);
+ try{if(window.CompressionStream){const s=new Blob([j]).stream().pipeThrough(new CompressionStream("gzip"));const u=new Uint8Array(await new Response(s).arrayBuffer());
+  let bin="";for(let i=0;i<u.length;i+=8192)bin+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return "EYA1:"+btoa(bin)}}catch(e){}
+ return "EYA0:"+btoa(unescape(encodeURIComponent(j)))}
+async function readCode(code){code=(code||"").replace(/\s+/g,"");
+ if(code.startsWith("EYA1:")){const bin=atob(code.slice(5));const u=Uint8Array.from(bin,c=>c.charCodeAt(0));
+  const s=new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"));return JSON.parse(await new Response(s).text())}
+ if(code.startsWith("EYA0:"))return JSON.parse(decodeURIComponent(escape(atob(code.slice(5)))));
+ throw new Error("bad")}
+function dataScreen(){
+ screen("data","app fit");save();
+ const canFile=window.top===window;
+ app.innerHTML=`<div class="main">
+  <div class="row between"><h1>セーブデータ</h1><span class="tag gold">自動セーブ ON</span></div>
+  <div class="panel small" style="line-height:1.8">1問答えるごとに、この端末へ自動で保存しています。<br>最後の保存：<b>${hm(S.savedAt)}</b>　（予備も10分ごとに保存）<br>
+   <span class="muted">別の端末に移すときや、データを消してしまったときのために「ひきつぎコード」を作っておくと安心です。</span></div>
+  <div class="panel" style="display:flex;flex-direction:column;gap:8px">
+   <h2>ひきつぎコードを作る</h2>
+   <textarea id="outc" class="code" readonly>作っています…</textarea>
+   <div class="${canFile?"duo":""}"><button class="btn sub" id="copy">コードをコピー</button>${canFile?`<button class="btn sub" id="dl">ファイルに保存</button>`:""}</div></div>
+  <div class="panel" style="display:flex;flex-direction:column;gap:8px">
+   <h2>コードから復元する</h2>
+   <textarea id="inc" class="code" placeholder="ここに ひきつぎコードを はりつけ"></textarea>
+   <div class="duo"><button class="btn sub" id="chk">読みこむ</button><label class="btn sub" style="text-align:center">ファイルから<input type="file" id="fin" accept=".txt,text/plain" hidden></label></div>
+   <div id="dmsg" class="muted small"></div>
+   <button class="btn gold" id="go2" hidden>上書きして復元する</button></div>
+ </div>
+ <div class="dock"><button class="btn sub" id="back">← もどる</button></div>`;
+ $("#back").onclick=()=>todayScreen();
+ let code="",pend=null;
+ makeCode().then(c=>{code=c;$("#outc").value=c});
+ $("#copy").onclick=()=>{const ta=$("#outc");
+  const fb=()=>{ta.focus();ta.select();$("#dmsg").textContent="コードを選びました。長おしで「コピー」してください。"};
+  try{navigator.clipboard.writeText(code).then(()=>{SE.ok();$("#copy").textContent="コピーしました"},fb)}catch(e){fb()}};
+ if($("#dl"))$("#dl").onclick=()=>{try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([code],{type:"text/plain"}));a.download="eiya-save-"+today()+".txt";document.body.appendChild(a);a.click();a.remove();SE.ok()}catch(e){}};
+ const check=async txt=>{const m=$("#dmsg");pend=null;$("#go2").hidden=true;
+  try{const d=await readCode(txt);if(!d||typeof d.mastery!=="object")throw 0;
+   const mk=Object.values(d.mastery).filter(v=>v>=MASTER).length;
+   m.innerHTML=`<b style="color:var(--gold)">読みこめました</b>：Lv.${d.lv||1}・覚えた漢字 ${mk}字・保存 ${d.savedAt?new Date(d.savedAt).toLocaleString("ja-JP"):"不明"}<br>今のデータは このデータで上書きされます。`;
+   pend=d;$("#go2").hidden=false}catch(e){m.textContent="コードを読みこめませんでした。最初から最後まで、まちがいなく はりつけたか確かめてください。";SE.ng()}};
+ $("#chk").onclick=()=>check($("#inc").value);
+ $("#fin").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$("#inc").value=r.result;check(r.result)};r.readAsText(f)};
+ $("#go2").onclick=()=>{if(!pend)return;S=Object.assign(def(),pend);save();SE.fanfare();home()};
+}
 function todayScreen(){
  screen("today","app fit");ensureQuest();
  const wd=["日","月","火","水","木","金","土"];
@@ -1654,7 +1715,8 @@ function todayScreen(){
    <div class="muted small" style="margin-top:6px">1日休んでも、おやすみの盾が れんぞく日数を守る（1週間に1こ）</div></div>
   <p class="credit">書き順データ：<a href="https://kanjivg.tagaini.net/" target="_blank" rel="noopener">KanjiVG</a>（Ulrich Apel, CC BY-SA 3.0）　${VERTAG}</p>
  </div>
- <div class="dock"><button class="btn sub" id="back">← もどる</button></div>`;
+ <div class="dock"><div class="duo"><button class="btn sub" id="back">← もどる</button><button class="btn sub" id="data">セーブデータ</button></div></div>`;
+ $("#data").onclick=()=>{SE.tap();dataScreen()};
  if($("#claim"))$("#claim").onclick=()=>{S.quest.claimed=true;save();chestScreen(true,"今日のクエスト達成！")};
  $("#rust").onclick=()=>startBattle("rust");
  $("#back").onclick=()=>home();
@@ -1704,7 +1766,7 @@ function kanjiDex(dir){
  DEXP=Math.min(Math.max(0,DEXP),pages-1);
  const part=pool.slice(DEXP*PER,DEXP*PER+PER);
  if(!DEXSEL||!part.find(d=>d.k===DEXSEL))DEXSEL=part[0].k;
- const cls=d=>{const c=S.mastery[d.k]||0;return isR(d.k)?"r":c>=MASTER?"m":c===2?"l2":c===1?"l1":""};
+ const cls=d=>{const c=S.mastery[d.k]||0;return isR(d.k)?"r":c>=MASTER?"m":c>0&&c===MASTER-1?"l2":c>0?"l1":""};
  app.innerHTML=`<div class="main" id="sc">
   <div class="row between"><h1>漢字ずかん</h1><span class="muted small num">${g}年（${kyu(g-1)}） 覚えた ${pool.filter(d=>isM(d.k)).length}/${pool.length}</span></div>
   <div class="grades">${[1,2,3,4,5,6].map(i=>`<button class="chip" data-g="${i}" aria-pressed="${g===i}">${i}年</button>`).join("")}</div>
@@ -1795,6 +1857,7 @@ function makeItem(type,x){
  const near=DATA.filter(y=>Math.abs(y.g-x.g)<=1);
  if(type==="read"){correct=x.wy;opts=[correct,...pick(near.map(y=>y.wy),3,correct)]}
  if(type==="write"){correct=x.w;opts=[correct,...pick(near.map(y=>y.w),3,correct)]}
+ if(type==="mean"){correct=x.w;opts=matchSet(x).map(y=>y.w)}
  if(type==="stroke"){const total=STROKES[x.k].length;red=Math.floor(Math.random()*total);correct=(red+1)+"画目";
   const cand=[];for(let j=1;j<=Math.max(total,5);j++)if(j!==red+1)cand.push(j);
   cand.sort((a,b)=>Math.abs(a-red-1)-Math.abs(b-red-1)+Math.random()-.5);
@@ -1812,7 +1875,6 @@ function companions(d,ks){
 function buildQs(ks){
  const types=["read","stroke","mean","write"];
  return ks.map((k,i)=>{const d=BYK[k],type=types[i%4];
-  if(type==="mean"){const set=matchSet(d);return {d,type,set,order:shuffle([0,1,2,3]),pos:shuffle([0,1,2,3]),step:0,miss:0}}
   const items=shuffle([d,...companions(d,ks)]).map(x=>makeItem(type,x));
   return {d,type,items,step:0,miss:0,notes:[]};
  });
@@ -1829,8 +1891,8 @@ function startBattle(mode){
   let base=[...notM,...shuffle(t.ks.filter(isM))];
   while(base.length<n-rev.length)base=base.concat(shuffle([...t.ks]));
   ks=shuffle([...base.slice(0,n-rev.length),...rev]);hp=m.kind==="rare"?40:60;
- }else if(mode==="guard"){m=list.find(x=>x.kind==="boss");ks=shuffle([...t.ks]).slice(0,8);hp=80;label="門番 "}
- else if(mode==="king"){m=list.find(x=>x.kind==="boss");ks=shuffle(CTOWNS[c].flatMap(id=>TOWNS[id].ks)).slice(0,10);hp=110;label="国の王 "}
+ }else if(mode==="guard"){m=list.find(x=>x.kind==="boss");ks=shuffle([...t.ks]).slice(0,8);hp=70;label="門番 "}
+ else if(mode==="king"){m=list.find(x=>x.kind==="boss");ks=shuffle(CTOWNS[c].flatMap(id=>TOWNS[id].ks)).slice(0,10);hp=90;label="国の王 "}
  else{m=SABI;ks=shuffle(reviewList()).slice(0,6);if(!ks.length)return home();hp=ks.length*11}
  const sk={hint:0,time:0,guard:0,xp:1,coin:1,heal:0};
  S.party.forEach(id=>{const s=MON[id].sk;if(s.t==="xp"||s.t==="coin")sk[s.t]=Math.max(sk[s.t],s.v);else sk[s.t]+=s.v});
@@ -1847,9 +1909,10 @@ function stepPrompt(q){
  const it=q.items[q.step],x=it.x;
  if(q.type==="read")return `${progHTML(q,4)}<div class="big">${hiW(x)}</div><div class="ask">この熟語の読みは？</div>`;
  if(q.type==="write")return `${progHTML(q,4)}<div class="big" style="font-family:var(--body);font-size:2.8rem">${x.wy}</div><div class="ask">「${x.m}」の漢字は？</div>`;
+ if(q.type==="mean")return `${progHTML(q,4)}<div class="ask" style="font-size:.95rem">この意味の熟語はどれ？</div><div class="meanq">${x.m}</div>`;
  return `${progHTML(q,4)}${strokeSVG(x.k,{red:it.red})}<div class="ask">赤い線は 何画目に書く？</div>`;
 }
-const choiceCls=(q,o)=>q.type==="write"?"k":q.type==="read"?(o.length>=7?"l7":o.length>=5?"l5":""):"";
+const choiceCls=(q,o)=>q.type==="write"||q.type==="mean"?"k":q.type==="read"?(o.length>=7?"l7":o.length>=5?"l5":""):"";
 function drawStep(q){
  const it=q.items[q.step];
  $("#pbody").innerHTML=stepPrompt(q);
@@ -1859,17 +1922,13 @@ function drawStep(q){
 }
 function renderQ(){
  const q=B.qs[B.i],d=q.d,st=STAGES[B.m.st];
- const label={read:"読みのまほう",mean:"意味あわせのまほう",write:"書きのまほう",stroke:"書き順のまほう"}[q.type];
+ const label={read:"読みのまほう",mean:"意味のまほう",write:"書きのまほう",stroke:"書き順のまほう"}[q.type];
  let intro="";
  if(B.intro){intro=B.mode==="rust"?`<div class="banner" style="color:#f2c9a6">さびた漢字をみがけ！</div>`:B.m.kind==="rare"?`<div class="banner">レアモンスター出現！</div>`:B.mode==="guard"?`<div class="banner" style="color:#ff8a7a">${B.t.name}の門番があらわれた！</div>`:B.mode==="king"?`<div class="banner" style="color:#ff8a7a">国の王 ${B.m.n}！</div>`:B.mode==="true"?`<div class="banner" style="color:#ff8a7a">真の魔王があらわれた！</div>`:""}
  B.intro=false;
  const allies=S.party.map(id=>`<div class="fig mini">${monsterSVG(MON[id])}</div>`).join("");
- const prompt=q.type==="mean"
-  ?`${progHTML(q,4)}<div class="ask" style="font-size:.95rem">この意味の熟語はどれ？ 4つ順番にタップ</div><div class="meanq" id="meanq">${q.set[q.order[q.step]].m}</div>`
-  :stepPrompt(q);
- const choices=q.type==="mean"
-  ?q.pos.map(ix=>{const s=q.set[ix];return `<button class="choice mw" data-ix="${ix}">${s.w}<small>${s.wy}</small></button>`}).join("")
-  :q.items[q.step].opts.map(o=>`<button class="choice ${choiceCls(q,o)}">${o}</button>`).join("");
+ const prompt=stepPrompt(q);
+ const choices=q.items[q.step].opts.map(o=>`<button class="choice ${choiceCls(q,o)}">${o}</button>`).join("");
  app.innerHTML=`
  <div class="row between"><button class="chip" id="quit">← にげる</button><span class="tag">${B.mode==="rust"?"さびた漢字":B.mode==="true"?"魔王の城・最深部":B.t.name}</span>${soundBtn()}</div>
  <div class="arena" id="arena" style="background:${skyCSS(st)}">
@@ -1878,18 +1937,18 @@ function renderQ(){
   <div class="side"><div class="fig" id="hero">${heroSVG()}</div>${allies}</div>
   <div class="fig ${B.m.kind==="boss"?"boss":""} ${B.m.kind==="rare"?"rare-glow":""}" id="mon">${monsterSVG(B.m)}</div>${intro}
  </div>
- <div class="qhead"><span class="row" style="gap:6px"><span class="qtype">${label}</span>${B.sk.hint>0&&q.type!=="mean"?`<button class="hintb" id="hint">ヒント×${B.sk.hint}</button>`:""}</span><span class="num">${B.combo>=2?`<b style="color:var(--gold)">${B.combo}コンボ</b>　`:""}${B.i+1} / ${B.qs.length}問 <span class="tag">${d.g}年</span></span></div>
+ <div class="qhead"><span class="row" style="gap:6px"><span class="qtype">${label}</span>${B.sk.hint>0?`<button class="hintb" id="hint">ヒント×${B.sk.hint}</button>`:""}</span><span class="num">${B.combo>=2?`<b style="color:var(--gold)">${B.combo}コンボ</b>　`:""}${B.i+1} / ${B.qs.length}問 <span class="tag">${d.g}年</span></span></div>
  <div class="timer" id="timer"><i></i></div>
  <div class="prompt" id="pbody">${prompt}</div>
  <div class="choices" id="chs">${choices}</div>
  <div id="after"></div>`;
  bindSound();
  SW={};$("#quit").onclick=()=>{clearTimer();home()};
- app.querySelectorAll("#chs .choice").forEach(b=>b.onclick=()=>q.type==="mean"?matchTap(b,q):seqTap(b,q));
+ app.querySelectorAll("#chs .choice").forEach(b=>b.onclick=()=>seqTap(b,q));
  if($("#hint"))$("#hint").onclick=()=>{const it=q.items[q.step];const w=[...app.querySelectorAll("#chs .choice:not(.gone):not(.ok)")].filter(b=>b.textContent!==it.correct);if(!w.length||B.sk.hint<=0)return;
   const x=shuffle(w)[0];x.classList.add("gone");x.disabled=true;B.sk.hint--;SE.tap();$("#hint").textContent="ヒント×"+B.sk.hint;$("#hint").disabled=true};
- const per=q.type==="stroke"?10000:5000;
- const lim=(q.type==="mean"?20000:per*4)+B.sk.time*1000*(q.type==="mean"?1:4);
+ const per=q.type==="stroke"?10000:q.type==="mean"?8000:5000;
+ const lim=(per+B.sk.time*1000)*q.items.length;
  const bar=$("#timer>i"),box=$("#timer");B.t0=performance.now();B.lim=lim;let lastSec=99;
  B.tm=setInterval(()=>{const el=performance.now()-B.t0,left=Math.max(0,lim-el);
   bar.style.width=(left/lim*100)+"%";box.className="timer"+(left<lim*.25?" danger":left<lim*.5?" warn":"");
@@ -1931,20 +1990,10 @@ function seqTap(b,q){
   it.miss++;q.miss++;b.classList.add("flash");SE.ng();buzz(40);setTimeout(()=>b.classList.remove("flash"),400);
  }
 }
-function matchTap(b,q){
- if(!B.tm||b.classList.contains("ok"))return;
- const ix=+b.dataset.ix;
- if(ix===q.order[q.step]){
-  b.classList.add("ok");b.disabled=true;b.insertAdjacentHTML("afterbegin",`<span class="no">${q.step+1}</span>`);
-  const ds=[...app.querySelectorAll(".mprog i")];ds[q.step].className="done";q.step++;
-  if(q.step>=4){clearTimer();settle(q.miss===0,q,false);return}
-  SE.tap();ds[q.step].className="on";$("#meanq").textContent=q.set[q.order[q.step]].m;
- }else{q.miss++;b.classList.add("flash");SE.ng();buzz(40);setTimeout(()=>b.classList.remove("flash"),400)}
-}
 function answer(btn,q){
  if(!B.tm)return;clearTimer();
  app.querySelectorAll("#chs .choice").forEach(b=>b.disabled=true);
- if(q.items){
+ {
   // 時間切れ：この小問とまだの小問は「ふくしゅう」へ
   for(let s=q.step;s<q.items.length;s++){const it=q.items[s];if(s===q.step){const ok=[...app.querySelectorAll("#chs .choice")].find(x=>x.textContent===it.correct);if(ok)ok.classList.add("ok")}
    it.note=credit(it.x.k,false);it.miss=Math.max(1,it.miss)}
@@ -1955,7 +2004,6 @@ function settle(ok,q,timeout){
  const el=performance.now()-B.t0,d=q.d;
  if($("#hint"))$("#hint").disabled=true;
  let verdict,extra="";
- if(q.type==="mean")extra=credit(d.k,ok);
  if(ok){
   B.combo++;B.maxCombo=Math.max(B.maxCombo,B.combo);B.ok++;const fast=el<B.lim*.4;
   if(fast){B.fast++;qAdd("fast",1)}
@@ -1974,8 +2022,7 @@ function settle(ok,q,timeout){
  $(".hp>i").style.width=B.hp+"%";$(".mhp>i").style.width=(B.mhp/B.max*100)+"%";
  const end=B.hp<=0||B.mhp<=0||B.i===B.qs.length-1;
  let body;
- if(q.type==="mean")body=`<div class="pairs">${q.set.map(s=>`<div class="${s===d?"tg":""}"><b>${s.w}</b><span><span class="muted small">${s.wy}</span>　${s.m}</span></div>`).join("")}</div><div class="muted small">「${d.k}」 音：${d.on}　訓：${d.kun}${extra?`　<b style="color:var(--gold)">${extra}</b>`:""}</div>`;
- else body=`<div class="pairs">${q.items.map(it=>{const x=it.x,n=(STROKES[x.k]||[]).length;
+ body=`<div class="pairs">${q.items.map(it=>{const x=it.x,n=(STROKES[x.k]||[]).length;
    const main=q.type==="stroke"?`<b>${x.k}</b><span>赤は <b class="sn">${it.red+1}画目</b>（全${n}画）　${x.w}</span>`:`<b>${x.w}</b><span>${x.wy}　<span class="muted small">${x.m}</span></span>`;
    return `<div class="${it.miss?"ng":""}">${main}<em class="nt">${it.miss?"✗ ":"○ "}${it.note||""}</em></div>`}).join("")}</div>`;
  $("#after").innerHTML=`<div class="panel sheet">
@@ -2025,9 +2072,9 @@ function finish(){
  if(lvUp)setTimeout(SE.lvup,1300);
  const gold=restored||kingWin||trueWin||m.kind==="rare";
  const giveChest=win;
- const left=t.ks.length-townDone(t);
+ const left=Math.max(0,guardNeed(t)-townDone(t));
  let progress="";
- if(B.mode==="town"){progress=townReady(t)?`<div class="tag gold" style="font-size:.85rem">${t.name}の漢字を全部覚えた！ 門番に挑戦できる</div>`:`<div class="muted small">${t.name}の封印まで あと <b style="color:var(--gold)">${left}字</b></div>`}
+ if(B.mode==="town"){progress=townReady(t)?`<div class="tag gold" style="font-size:.85rem">${t.name}の門番に挑戦できる！</div>`:`<div class="muted small">${t.name}の門番まで あと <b style="color:var(--gold)">${left}字</b></div>`}
  const lostMsg=B.hp<=0?"エイヤは一度もどった…":m.kind==="rare"?`${m.n}は にげてしまった…`:`${m.n}は まだ元気だ…`;
  const head=trueWin?"真の勇者になった！":restored?`${t.name}に文字がもどった！`:kingWin?`${STAGES[t.c].n}を解放した！`:win?`${B.label}${m.n}をたおした！`:lostMsg;
  app.innerHTML=`<div class="scroll"><div class="panel result">
